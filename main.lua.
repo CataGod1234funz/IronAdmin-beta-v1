@@ -1,0 +1,210 @@
+-- [[ IronAdmin Beta v1 ]] --
+-- "The Chaos Update"
+
+local prefix = ";"
+local lp = game.Players.LocalPlayer
+local RS = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local platformPart = nil
+local speed = 50
+local protesting = false
+local flying = false
+local xrayEnabled = false
+
+local protestMessages = {
+    "BRING BACK THE GOOD DAYS! THE GOLDEN ERA!",
+    "WE DEMAND THE OLD CHAT SYSTEM BACK!",
+    "STOP THE RESTRICTIONS ON OUR VOICES!",
+    "REMEMBER WHEN CHAT WAS ACTUALLY GOOD?",
+    "FIX THE CHAT OR WE STAY LOUD!",
+    "THE COMMUNITY WANTS RECENT UPDATES REVERTED!",
+    "BRING BACK THE FREEDOM WE HAD!",
+    "NO MORE CHAT LIMITS! WE WANT JUSTICE!",
+    "RESTORE THE CLASSIC ROBLOX VIBE!",
+    "CHAT BACK! CHAT BACK! CHAT BACK!",
+    "PROTESTING UNTIL THE GOOD DAYS RETURN!"
+}
+
+local function notify(text)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "IronAdmin v1",
+        Text = text,
+        Duration = 5
+    })
+end
+
+-- ==================== CORE SYSTEMS ====================
+
+local function getTargets(name)
+    if not name then return {} end
+    local results = {}
+    local lowerName = name:lower()
+    if lowerName == "all" then return game.Players:GetPlayers()
+    elseif lowerName == "others" then
+        for _, p in pairs(game.Players:GetPlayers()) do if p ~= lp then table.insert(results, p) end end
+    elseif lowerName == "me" then table.insert(results, lp)
+    else
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p.Name:lower():find(lowerName) or p.DisplayName:lower():find(lowerName) then table.insert(results, p) end
+        end
+    end
+    return results
+end
+
+local function chat(msg)
+    local chatEvent = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvent then
+        chatEvent.SayMessageRequest:FireServer(msg, "All")
+    else
+        local textChat = game:GetService("TextChatService"):FindFirstChild("TextChannels")
+        if textChat and textChat:FindFirstChild("RBXGeneral") then
+            textChat.RBXGeneral:SendAsync(msg)
+        end
+    end
+end
+
+-- ==================== THE COMMANDS ====================
+
+lp.Chatted:Connect(function(msg)
+    if not (msg:sub(1, #prefix) == prefix) then return end
+    local args = msg:split(" ")
+    local cmd = args[1]:sub(#prefix + 1):lower()
+    local targetName = args[2]
+    local targets = getTargets(targetName)
+    
+    local char = lp.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+
+    -- [ MOVEMENT ]
+    if cmd == "speed" then
+        if hum then hum.WalkSpeed = tonumber(args[2]) or 50 end
+    elseif cmd == "hheight" then
+        if hum then hum.HipHeight = tonumber(args[2]) or 5 end
+    elseif cmd == "unhheight" then
+        if hum then hum.HipHeight = (hum.RigType == Enum.HumanoidRigType.R15) and 2 or 0 end
+    elseif cmd == "goto" or cmd == "tp" then
+        if targets[1] and targets[1].Character then
+            hrp.CFrame = targets[1].Character.HumanoidRootPart.CFrame
+        end
+
+    -- [ PLATFORM ]
+    elseif cmd == "plat" then
+        if platformPart then platformPart:Destroy() end
+        platformPart = Instance.new("Part", workspace)
+        platformPart.Size = Vector3.new(12, 1, 12)
+        platformPart.Anchored = true
+        platformPart.CFrame = hrp.CFrame * CFrame.new(0, -3.5, 0)
+        platformPart.Material = Enum.Material.ForceField
+        platformPart.Color = Color3.new(1, 0, 0)
+    elseif cmd == "unplat" then
+        if platformPart then platformPart:Destroy() platformPart = nil end
+
+    -- [ CHAOS & PHYSICS ]
+    elseif cmd == "storm" then
+        notify("CRITICAL CHAOS LOADED")
+        for _, t in pairs(game.Players:GetPlayers()) do
+            if t ~= lp and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+                task.spawn(function()
+                    local tHrp = t.Character.HumanoidRootPart
+                    local bv = Instance.new("BodyAngularVelocity", hrp)
+                    bv.AngularVelocity = Vector3.new(0, 99999, 0)
+                    bv.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                    local endTime = tick() + 0.4
+                    while tick() < endTime do hrp.CFrame = tHrp.CFrame task.wait() end
+                    bv:Destroy()
+                end)
+            end
+        end
+    elseif cmd == "void" then
+        for _, t in pairs(targets) do
+            if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+                t.Character.HumanoidRootPart.CFrame = CFrame.new(0, -1000, 0)
+            end
+        end
+    elseif cmd == "fling" then
+        for _, t in pairs(targets) do
+            task.spawn(function()
+                local tHrp = t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+                if tHrp then
+                    local oldPos = hrp.CFrame
+                    local bv = Instance.new("BodyAngularVelocity", hrp)
+                    bv.AngularVelocity = Vector3.new(0, 99999, 0)
+                    bv.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                    local nc = RS.Stepped:Connect(function()
+                        for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+                    end)
+                    local endTime = tick() + 0.7
+                    while tick() < endTime do hrp.CFrame = tHrp.CFrame task.wait() end
+                    nc:Disconnect() bv:Destroy() hrp.CFrame = oldPos
+                end
+            end)
+        end
+
+    -- [ TROLL & DRAMA ]
+    elseif cmd == "boogie" then
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.Color = Color3.fromRGB(150, 0, 255) v.Material = Enum.Material.Neon end
+        end
+        if hum.RigType == Enum.HumanoidRigType.R15 then
+            hum.HeadScale.Value = 3 hum.BodyWidthScale.Value = 2
+        end
+    elseif cmd == "unboogie" or cmd == "reset" then
+        lp:LoadCharacter()
+    elseif cmd == "spin" then
+        for _, t in pairs(targets) do
+            task.spawn(function()
+                local tr = t.Character:FindFirstChild("HumanoidRootPart")
+                if tr then for i = 1, 200 do tr.CFrame *= CFrame.Angles(0, 0.8, 0) task.wait() end end
+            end)
+        end
+    elseif cmd == "dance" then
+        for _, t in pairs(targets) do
+            local th = t.Character:FindFirstChild("Humanoid")
+            if th then
+                local a = Instance.new("Animation") a.AnimationId = "rbxassetid://188632011"
+                th:LoadAnimation(a):Play()
+            end
+        end
+
+    -- [ PROTEST SPAMMER ]
+    elseif cmd == "bbtgd" then
+        if protesting then return end
+        protesting = true
+        notify("PROTEST STARTED (10s Cycle)")
+        task.spawn(function()
+            while protesting do
+                chat(protestMessages[math.random(1, #protestMessages)])
+                task.wait(10)
+            end
+        end)
+    elseif cmd == "unbbtgd" then
+        protesting = false
+        notify("Protest Ended.")
+
+    -- [ TOOLS ]
+    elseif cmd == "esp" then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= lp and p.Character then Instance.new("Highlight", p.Character).Name = "IronESP" end
+        end
+    elseif cmd == "unesp" then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            local e = p.Character and p.Character:FindFirstChild("IronESP")
+            if e then e:Destroy() end
+        end
+    elseif cmd == "dex" then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiy/getfy/main/dex.lua"))()
+    elseif cmd == "rspy" then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/76435345332/SimpleSpyV2/main/main.lua"))()
+
+    elseif cmd == "cmds" then
+        print("=== IRONADMIN BETA v1 ===")
+        print("Chaos: ;storm, ;fling [p], ;void [p], ;spin [p], ;dance [p]")
+        print("Self: ;boogie, ;unboogie, ;speed [n], ;hheight [n], ;plat, ;unplat")
+        print("Tools: ;esp, ;unesp, ;dex, ;rspy, ;tp [p]")
+        print("Protest: ;bbtgd, ;unbbtgd")
+    end
+end)
+
+notify("IronAdmin Beta v1 Loaded. Type ;cmds for the arsenal.")
